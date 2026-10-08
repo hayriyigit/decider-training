@@ -1,0 +1,7 @@
+data/
+logs/
+*_run/
+*_eval_start.json
+.env
+__pycache__/
+run.log
