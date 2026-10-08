@@ -25,7 +25,7 @@ mkdir -p logs
 # The GPU: one card, chosen with CUDA_VISIBLE_DEVICES. Training needs ~40-60 GB of its memory; a card an inference engine
 # (vLLM, SGLang, TGI...) has reserved would run both out of memory, so the script stops if the card is not free enough.
 : "${CUDA_VISIBLE_DEVICES:?set CUDA_VISIBLE_DEVICES to one free GPU, e.g. export CUDA_VISIBLE_DEVICES=3 (nvidia-smi shows which)}"
-export CUDA_VISIBLE_DEVICES
+export CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID      # the same numbering as nvidia-smi
 GPU=$(echo "$CUDA_VISIBLE_DEVICES" | cut -d, -f1)
 FREE=$(nvidia-smi -i "$GPU" --query-gpu=memory.free --format=csv,noheader,nounits | head -1)
 echo "GPU $GPU: ${FREE} MiB free" | tee -a logs/run_gpu.log
