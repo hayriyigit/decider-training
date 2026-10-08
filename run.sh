@@ -36,8 +36,20 @@ MODEL=$(cfg repo); REVISION=$(cfg revision); TARGET=$(grep -E "push_to_hub:" "$C
 TRAIN=$(cfg train); TEST=$(cfg test)
 echo "config $CONFIG: $MODEL@$REVISION -> $TARGET; data $TRAIN, $TEST" | tee -a logs/$name.log
 
-# 1. uv
-command -v uv > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$UV_INSTALL_DIR" sh   # into .uv-bin; the shell profile is not edited
+# 1. uv, a pinned version in .uv-bin (the shell profile is not edited): --torch-backend needs a recent uv
+UV_VERSION=0.12.17
+[ "$("$UV_INSTALL_DIR/uv" --version 2>/dev/null | awk '{print $2}')" = "$UV_VERSION" ] || \
+  curl -LsSf "https://astral.sh/uv/$UV_VERSION/install.sh" | env UV_UNMANAGED_INSTALL="$UV_INSTALL_DIR" sh
+# torch built for the CUDA this machine's driver supports (PyPI's default build may need a newer driver: torch then sees no
+# GPU and Triton fails with "0 active drivers"); environments built with another backend are rebuilt
+export UV_TORCH_BACKEND=${UV_TORCH_BACKEND:-auto}
+DRIVER=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1)
+STAMP="$UV_CACHE_DIR/torch_backend"
+if [ "$(cat "$STAMP" 2>/dev/null)" != "$UV_TORCH_BACKEND $DRIVER" ]; then
+  rm -rf "$UV_CACHE_DIR"/environments-v2/decider-* logs/causal_conv1d.log
+  mkdir -p "$UV_CACHE_DIR"; echo "$UV_TORCH_BACKEND $DRIVER" > "$STAMP"
+fi
+echo "driver $DRIVER, torch backend $UV_TORCH_BACKEND, $(uv --version)" | tee -a logs/run_gpu.log
 
 # 2. the data
 if [ ! -s "$TRAIN" ] || [ ! -s "$TEST" ]; then
@@ -51,11 +63,17 @@ ARCH=$(nvidia-smi -i "$GPU" --query-gpu=compute_cap --format=csv,noheader | head
 export TORCH_CUDA_ARCH_LIST=$ARCH MAX_JOBS=${MAX_JOBS:-8}           # the build uses CPU only; 8 jobs leave the other services room
 echo "GPU: $(nvidia-smi -i "$GPU" --query-gpu=name,memory.total --format=csv,noheader | head -1), compute capability $ARCH" | tee -a logs/$name.log
 for s in decider_eval decider_lora; do uv run --script scripts/$s.py --help > /dev/null 2>&1; done
+for env in "$UV_CACHE_DIR"/environments-v2/decider-*/bin/python; do         # torch must see the GPU before anything else runs
+  $env -c "import torch; ok = torch.cuda.is_available(); print('torch', torch.__version__, 'CUDA', torch.version.cuda, 'GPU', ok, '$env'); raise SystemExit(0 if ok else 1)" \
+    2>&1 | tee -a logs/run_gpu.log
+  [ "${PIPESTATUS[0]}" = 0 ] || { echo "torch does not see the GPU (driver $DRIVER); send logs/run_gpu.log"; exit 1; }
+done
 if [ ! -s logs/causal_conv1d.log ]; then
   for env in "$UV_CACHE_DIR"/environments-v2/decider-*/bin/python; do                # only this folder's environments
     uv pip install --python $env setuptools wheel ninja packaging > /dev/null 2>&1
-    nice -n 10 uv pip install --python $env --no-build-isolation causal-conv1d 2>&1 | tail -1
-    $env -c "import causal_conv1d; print('causal_conv1d', causal_conv1d.__version__, '$env')"
+    nice -n 10 uv pip install --python $env --no-build-isolation causal-conv1d 2>&1 | tail -3
+    $env -c "import causal_conv1d; print('causal_conv1d', causal_conv1d.__version__, '$env')" 2>/dev/null \
+      || echo "causal-conv1d not built for $env: training runs without it (slower)"
   done 2>&1 | tee logs/causal_conv1d.log
 fi
 

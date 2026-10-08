@@ -71,3 +71,11 @@ dakikada bir). Eğitimi temiz durdurmak için `touch <workdir>/STOP`.
 - H200 (141 GB): kart boşsa `micro_tokens: 32768`; başka servislerle paylaşılan kartta 16384 (~25 GB) ve `MIN_FREE_MIB=40000`.
 - `decider_judge3`: ~24K satır, ~11M token; başlangıç ölçümü ~15 dk, eğitim tahminen 1 saatin altında.
 - Disk: başlangıç modeli ~8 GB, merge edilmiş çıktı ~8 GB, Python ortamları ~7 GB. En az 40 GB boş yer bırakın.
+
+## Sorun giderme
+
+- **`RuntimeError: 0 active drivers` ya da torch GPU görmüyor:** PyPI'daki torch CUDA 13 ile derlenir ve NVIDIA sürücüsü 580+ ister. `run.sh`, uv'nin
+  `UV_TORCH_BACKEND=auto` ayarıyla sürücüye uyan torch'u (ör. `cu126`) seçer ve eğitimden önce torch'un GPU'yu gördüğünü kontrol eder.
+  Elle seçmek için: `export UV_TORCH_BACKEND=cu126`. Ayrıntı `logs/run_gpu.log`'da.
+- **`No module named causal_conv1d`:** derleme başarısız oldu (çoğunlukla `nvcc` yok ya da sürümü torch'unkiyle uyuşmuyor). Eğitim onsuz
+  çalışır, yalnızca daha yavaş. Yeniden denemek için `rm logs/causal_conv1d.log`.
