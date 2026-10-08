@@ -38,7 +38,7 @@ train:
   lr: 1.0e-4
   warmup: 0.05
   tokens_per_step: 65536
-  micro_tokens: 32768                           # H200 (141 GB); 16384 on a 32 GB card
+  micro_tokens: 16384                           # ~25 GB peak: fits next to other services on a shared card; 32768 on a free H200
 
 checkpoint:
   every_minutes: 30

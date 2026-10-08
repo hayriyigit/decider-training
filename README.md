@@ -68,6 +68,6 @@ dakikada bir). Eğitimi temiz durdurmak için `touch <workdir>/STOP`.
 ## Süre ve bellek
 
 - RTX 5090 (32 GB): `micro_tokens: 16384`, ~4.000 token/s.
-- H200 (141 GB): `micro_tokens: 32768`.
+- H200 (141 GB): kart boşsa `micro_tokens: 32768`; başka servislerle paylaşılan kartta 16384 (~25 GB) ve `MIN_FREE_MIB=40000`.
 - `decider_judge3`: ~24K satır, ~11M token; başlangıç ölçümü ~15 dk, eğitim tahminen 1 saatin altında.
 - Disk: başlangıç modeli ~8 GB, merge edilmiş çıktı ~8 GB, Python ortamları ~7 GB. En az 40 GB boş yer bırakın.
