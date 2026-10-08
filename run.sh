@@ -14,8 +14,22 @@ cd "$(dirname "$0")"
 CONFIG=${1:-configs/decider_judge3.yaml}
 DATA_REPO=${DATA_REPO:-hayriyigit/decider-judge-ttl-mix}
 : "${HF_TOKEN:?export HF_TOKEN=hf_... first}"
-export HF_TOKEN UV_NO_CACHE=0 UV_LINK_MODE=hardlink PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PATH=$HOME/.local/bin:/usr/local/cuda/bin:$PATH
+# Everything this script installs or downloads stays inside this folder (uv cache and environments, Hugging Face cache):
+# nothing outside it changes, so other Python environments and inference engines on the machine are left as they are.
+# Delete the folder to remove it all.
+export HF_TOKEN UV_NO_CACHE=0 UV_LINK_MODE=hardlink PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export UV_CACHE_DIR=$PWD/.uv-cache UV_PYTHON_INSTALL_DIR=$PWD/.uv-python HF_HOME=$PWD/.hf-home UV_NO_MODIFY_PATH=1
+export UV_INSTALL_DIR=$PWD/.uv-bin PATH=$PWD/.uv-bin:$PATH:/usr/local/cuda/bin
 mkdir -p logs
+
+# The GPU: one card, chosen with CUDA_VISIBLE_DEVICES. Training needs ~40-60 GB of its memory; a card an inference engine
+# (vLLM, SGLang, TGI...) has reserved would run both out of memory, so the script stops if the card is not free enough.
+: "${CUDA_VISIBLE_DEVICES:?set CUDA_VISIBLE_DEVICES to one free GPU, e.g. export CUDA_VISIBLE_DEVICES=3 (nvidia-smi shows which)}"
+export CUDA_VISIBLE_DEVICES
+GPU=$(echo "$CUDA_VISIBLE_DEVICES" | cut -d, -f1)
+FREE=$(nvidia-smi -i "$GPU" --query-gpu=memory.free --format=csv,noheader,nounits | head -1)
+echo "GPU $GPU: ${FREE} MiB free" | tee -a logs/run_gpu.log
+[ "${FREE:-0}" -ge "${MIN_FREE_MIB:-70000}" ] || { echo "GPU $GPU has only ${FREE} MiB free (needs ${MIN_FREE_MIB:-70000}); pick another card or set MIN_FREE_MIB"; exit 1; }
 name=$(basename "$CONFIG" .yaml)
 cfg() { grep -E "^  $1:" "$CONFIG" | head -1 | awk '{print $2}'; }
 MODEL=$(cfg repo); REVISION=$(cfg revision); TARGET=$(grep -E "push_to_hub:" "$CONFIG" | sed -E 's/.*repo: *([^,} ]+).*/\1/')
@@ -23,7 +37,7 @@ TRAIN=$(cfg train); TEST=$(cfg test)
 echo "config $CONFIG: $MODEL@$REVISION -> $TARGET; data $TRAIN, $TEST" | tee -a logs/$name.log
 
 # 1. uv
-command -v uv > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+command -v uv > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$UV_INSTALL_DIR" sh   # into .uv-bin; the shell profile is not edited
 
 # 2. the data
 if [ ! -s "$TRAIN" ] || [ ! -s "$TEST" ]; then
@@ -33,14 +47,14 @@ snapshot_download('$DATA_REPO', repo_type='dataset', local_dir='.', allow_patter
 fi
 
 # 3. the environments, and causal-conv1d built for this GPU (~1.7x faster training; optional: training runs without it)
-ARCH=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1)
-export TORCH_CUDA_ARCH_LIST=$ARCH MAX_JOBS=${MAX_JOBS:-32}
-echo "GPU: $(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1), compute capability $ARCH" | tee -a logs/$name.log
+ARCH=$(nvidia-smi -i "$GPU" --query-gpu=compute_cap --format=csv,noheader | head -1)
+export TORCH_CUDA_ARCH_LIST=$ARCH MAX_JOBS=${MAX_JOBS:-8}           # the build uses CPU only; 8 jobs leave the other services room
+echo "GPU: $(nvidia-smi -i "$GPU" --query-gpu=name,memory.total --format=csv,noheader | head -1), compute capability $ARCH" | tee -a logs/$name.log
 for s in decider_eval decider_lora; do uv run --script scripts/$s.py --help > /dev/null 2>&1; done
 if [ ! -s logs/causal_conv1d.log ]; then
-  for env in $(find / -path "*environments-v2/decider-*/bin/python" 2>/dev/null); do
+  for env in "$UV_CACHE_DIR"/environments-v2/decider-*/bin/python; do                # only this folder's environments
     uv pip install --python $env setuptools wheel ninja packaging > /dev/null 2>&1
-    uv pip install --python $env --no-build-isolation causal-conv1d 2>&1 | tail -1
+    nice -n 10 uv pip install --python $env --no-build-isolation causal-conv1d 2>&1 | tail -1
     $env -c "import causal_conv1d; print('causal_conv1d', causal_conv1d.__version__, '$env')"
   done 2>&1 | tee logs/causal_conv1d.log
 fi

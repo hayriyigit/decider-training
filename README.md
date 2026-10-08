@@ -23,9 +23,19 @@ ve başlangıç modeli indirilir. Sonuçlar `results/` altında paketlenir:
 PUSH=0 ./run.sh configs/decider_judge3.yaml
 ```
 
+**Başka servislerin çalıştığı bir sunucuda:**
+
+- Script her şeyi bu klasörün içine kurar ve indirir: uv, Python ortamları (torch dahil), causal-conv1d derlemesi, Hugging Face
+  cache'i (`.uv-*`, `.hf-home`). Sistem Python'una, CUDA'ya, sürücüye ya da başka ortamlara dokunmaz; klasörü silmek her şeyi kaldırır.
+- `CUDA_VISIBLE_DEVICES` ile **boş bir GPU** seçilmesi zorunludur. Script, seçilen kartta en az 70 GB boş bellek yoksa başlamaz
+  (`MIN_FREE_MIB` ile değiştirilebilir). Bir inference engine'in (vLLM vb.) belleğini ayırdığı karta eğitim koyarsanız ikisi de
+  bellek hatası alır.
+- causal-conv1d derlemesi yalnızca CPU kullanır; varsayılan 8 paralel iş ve düşük öncelikle (`nice`) çalışır (`MAX_JOBS` ile değiştirilebilir).
+
 Uzun sürdüğü için `tmux` ya da `nohup` içinde çalıştırın:
 
 ```bash
+export CUDA_VISIBLE_DEVICES=3     # boş bir GPU: nvidia-smi
 tmux new -s train 'PUSH=0 ./run.sh configs/decider_judge3.yaml 2>&1 | tee run.log'
 ```
 
