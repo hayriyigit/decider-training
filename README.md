@@ -12,10 +12,21 @@ export HF_TOKEN=hf_...          # data ve başlangıç modeli için read, hedef 
 ./run.sh configs/decider_judge3.yaml
 ```
 
+**Sunucudan Hugging Face'e yükleme yapılamıyorsa** `PUSH=0` ile çalıştırın. Bu modda hiçbir şey yüklenmez; HF'ten yalnızca veri
+ve başlangıç modeli indirilir. Sonuçlar `results/` altında paketlenir:
+
+- `results/<config>_reports.tar.gz` (birkaç MB): başlangıç ve son değerlendirme raporları, `train_log.jsonl`, config ve bütün loglar.
+  Sonuçları görmek için yalnızca bu dosya yeterli.
+- `results/<config>_model.tar` (~8 GB): merge edilmiş, kalibre edilmiş model (`decider_config.json` ve `decider/` kodu dahil).
+
+```bash
+PUSH=0 ./run.sh configs/decider_judge3.yaml
+```
+
 Uzun sürdüğü için `tmux` ya da `nohup` içinde çalıştırın:
 
 ```bash
-tmux new -s train './run.sh configs/decider_judge3.yaml 2>&1 | tee run.log'
+tmux new -s train 'PUSH=0 ./run.sh configs/decider_judge3.yaml 2>&1 | tee run.log'
 ```
 
 Gereken tek şey NVIDIA GPU, CUDA toolkit (`nvcc`, causal-conv1d derlemesi için) ve internet. `uv` yoksa script kurar; Python
@@ -30,7 +41,8 @@ ortamlarını script başlıklarındaki (PEP 723) bağımlılıklardan kendisi o
    (H200: 9.0, RTX 5090: 12.0). Derleme ~15 dakika sürer ve eğitimi ~1,7 kat hızlandırır; başarısız olursa eğitim yine çalışır.
 4. Başlangıç modelini test split'inde ölçer (`<config>_eval_start.json`).
 5. `scripts/decider_lora.py`: items → train → export (LoRA merge + temperature kalibrasyonu) → evaluate → push.
-6. Config dosyasını, başlangıç ölçümünü, `train_log.jsonl`'u ve bütün logları hedef model repo'sunun `training/` klasörüne yükler.
+6. Config dosyasını, başlangıç ölçümünü, `train_log.jsonl`'u ve bütün logları hedef model repo'sunun `training/` klasörüne yükler
+   (`PUSH=0`: hepsini `results/` altında paketler, push adımını atlar).
 
 Yarıda kalırsa aynı komutu tekrar çalıştırın: biten adımlar atlanır, eğitim son checkpoint'ten devam eder (checkpoint her 30
 dakikada bir). Eğitimi temiz durdurmak için `touch <workdir>/STOP`.

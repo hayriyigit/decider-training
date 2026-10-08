@@ -6,6 +6,7 @@
 #
 #   export HF_TOKEN=hf_...              # read access to the data and the starting model, write access to the target repo
 #   ./run.sh configs/decider_judge3.yaml
+#   PUSH=0 ./run.sh configs/decider_judge3.yaml   # no uploads from this server: everything is packed under results/ instead
 #
 # Resumable: run the same command again after a crash or a time limit; finished steps are skipped.
 set -uo pipefail
@@ -49,14 +50,29 @@ START=${name}_eval_start.json
 [ -s "$START" ] || uv run --script scripts/decider_eval.py --data "$TEST" --model "$MODEL" --revision "$REVISION" --out "$START" 2>&1 \
   | grep --line-buffered -vE "Fetching|Loading weights" | tee logs/${name}_eval_start.log
 
-# 5. LoRA: items, train, export (merge + calibration), evaluate, push
-uv run --script scripts/decider_lora.py --config "$CONFIG" 2>&1 | grep --line-buffered -vE "Fetching|Loading weights|Writing model" \
+# 5. LoRA: items, train, export (merge + calibration), evaluate, push (PUSH=0: a copy of the config without the push)
+RUN_CONFIG=$CONFIG
+if [ "${PUSH:-1}" = 0 ]; then
+  RUN_CONFIG=${CONFIG%.yaml}.nopush.yaml
+  sed -E 's/^(  push_to_hub:).*/\1 null/' "$CONFIG" > "$RUN_CONFIG"
+fi
+uv run --script scripts/decider_lora.py --config "$RUN_CONFIG" 2>&1 | grep --line-buffered -vE "Fetching|Loading weights|Writing model" \
   | tee -a logs/${name}_lora.log
 code=${PIPESTATUS[0]}
 echo "EXIT $code" | tee -a logs/${name}_lora.log
 
-# 6. the records next to the model: training/ in the target repo
+# 6. the records next to the model: training/ in the target repo, or (PUSH=0) results/ on this server
 WORK=$(grep -E "^workdir:" "$CONFIG" | awk '{print $2}')
+if [ "${PUSH:-1}" = 0 ]; then
+  OUT=results/$name; mkdir -p "$OUT/training"
+  cp -f "$CONFIG" "$START" "$WORK/train_log.jsonl" "$WORK/eval_report.json" logs/*.log "$OUT/training/" 2>/dev/null
+  [ -d "$WORK/model" ] && cp -f "$WORK/eval_report.json" "$WORK/model/" 2>/dev/null
+  tar -czf "results/${name}_reports.tar.gz" -C "$OUT" training                       # small: the numbers and the logs
+  [ -d "$WORK/model" ] && tar -cf "results/${name}_model.tar" --exclude=__pycache__ -C "$WORK" model   # ~8 GB: the merged model
+  ls -lh results/ | tee -a logs/${name}_lora.log
+  echo "results: $(pwd)/results (reports: ${name}_reports.tar.gz, model: ${name}_model.tar)"
+  exit $code
+fi
 uv run --with huggingface_hub python -c "
 from pathlib import Path
 from huggingface_hub import HfApi
