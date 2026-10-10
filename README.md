@@ -72,6 +72,24 @@ dakikada bir). Eğitimi temiz durdurmak için `touch <workdir>/STOP`.
 - `decider_judge3`: ~24K satır, ~11M token; başlangıç ölçümü ~15 dk, eğitim tahminen 1 saatin altında.
 - Disk: başlangıç modeli ~8 GB, merge edilmiş çıktı ~8 GB, Python ortamları ~7 GB. En az 40 GB boş yer bırakın.
 
+## Benchmark: system-one-bench-tr
+
+[system-one-bench-tr](https://github.com/UlkuTuncerKucuktas/system-one-bench-tr), 66 Türkçe karar görevi (choice / noul / score)
+içeren bir benchmark. `bench.sh` decider modellerinin cevaplarını bench'in sonuç formatında üretir; puanlama GPU istemez ve
+başka bir makinede `s1bench score` ile yapılır.
+
+```bash
+export HF_TOKEN=hf_... CUDA_VISIBLE_DEVICES=5 MIN_FREE_MIB=20000
+tmux new -s bench './bench.sh hayriyigit/decider-4b-tr-judge-ttl@8b69f8a8dead233b95cc82e960a507a53a68af2c judge3_run/model 2>&1 | tee bench.log'
+```
+
+- Bench'in görev dosyaları `hayriyigit/s1bench-tr-data`'dan (private) iner; sunucunun bench'in kaynaklarına (GitHub, Zenodo,
+  Kaggle) erişmesi gerekmez.
+- Model bir Hub repo'su (`repo@revision`) ya da yerel bir klasör olabilir (ör. `run.sh`'nin çıktısı `judge3_run/model`).
+- `MAIN=1`: yalnızca bench'in 26 ana görevi (daha hızlı).
+- Çıktı: `results/s1bench_predictions.tar.gz`. Bunu getirin, puanlama ve diğer modellerle karşılaştırma oradan yapılır.
+- Eğitimle aynı anda çalıştırmayın; `run.sh` ya da `bench.sh` çalışırken `git pull` yapmayın.
+
 ## Sorun giderme
 
 - **`RuntimeError: 0 active drivers` ya da torch GPU görmüyor:** PyPI'daki torch CUDA 13 ile derlenir ve NVIDIA sürücüsü 580+ ister. `run.sh`, uv'nin
