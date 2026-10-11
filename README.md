@@ -61,6 +61,10 @@ dakikada bir). Eğitimi temiz durdurmak için `touch <workdir>/STOP`.
 
 ## Dosyalar
 
+- `AGENTS.md` (ve `CLAUDE.md`): sunucuda turu çalıştıran agent için talimatlar: neye bakılır, sorun giderme, rapor
+- `summarize.py`: turun kısa raporu (eğitim durumu, başlangıç ve yeni modelin kritik kategorileri, bench alanları); logların
+  yerine bunu taşıyın: `python3 summarize.py configs/decider_judge4.yaml`
+
 - `run.sh`: yukarıdaki adımlar
 - `scripts/decider_lora.py`: LoRA eğitimi, export, değerlendirme, push
 - `scripts/decider_eval.py`: bir decider modelini laya formatındaki bir test parquet'inde ölçer
