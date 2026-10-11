@@ -12,7 +12,7 @@
 # Resumable: run the same command again after a crash or a time limit; finished steps are skipped.
 set -uo pipefail
 cd "$(dirname "$0")"
-CONFIG=${1:-configs/decider_judge3.yaml}
+CONFIG=${1:-configs/decider_judge4.yaml}
 DATA_REPO=${DATA_REPO:-hayriyigit/decider-judge-ttl-mix}
 : "${HF_TOKEN:?export HF_TOKEN=hf_... first}"
 export HF_TOKEN
