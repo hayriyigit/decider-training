@@ -51,6 +51,8 @@ ortamlarını script başlıklarındaki (PEP 723) bağımlılıklardan kendisi o
    (H200: 9.0, RTX 5090: 12.0). Derleme ~15 dakika sürer ve eğitimi ~1,7 kat hızlandırır; başarısız olursa eğitim yine çalışır.
 4. Başlangıç modelini test split'inde ölçer (`<config>_eval_start.json`).
 5. `scripts/decider_lora.py`: items → train → export (LoRA merge + temperature kalibrasyonu) → evaluate → push.
+7. Eğitim başarıyla biterse başlangıç modelini ve eğitilen modeli system-one-bench-tr'de ölçer (`bench.sh`, aşağıda);
+   çıktı `results/s1bench_predictions.tar.gz`. Atlamak için `BENCH=0`.
 6. Config dosyasını, başlangıç ölçümünü, `train_log.jsonl`'u ve bütün logları hedef model repo'sunun `training/` klasörüne yükler
    (`PUSH=0`: hepsini `results/` altında paketler, push adımını atlar).
 

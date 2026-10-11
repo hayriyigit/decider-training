@@ -7,6 +7,7 @@
 #   export HF_TOKEN=hf_...              # read access to the data and the starting model, write access to the target repo
 #   ./run.sh configs/decider_judge3.yaml
 #   PUSH=0 ./run.sh configs/decider_judge3.yaml   # no uploads from this server: everything is packed under results/ instead
+# When the round finishes, bench.sh scores the starting and the trained model on system-one-bench-tr (BENCH=0 skips it).
 #
 # Resumable: run the same command again after a crash or a time limit; finished steps are skipped.
 set -uo pipefail
@@ -93,6 +94,12 @@ uv run --script scripts/decider_lora.py --config "$RUN_CONFIG" 2>&1 | grep --lin
 code=${PIPESTATUS[0]}
 echo "EXIT $code" | tee -a logs/${name}_lora.log
 
+# 7. after a finished round: the starting and the trained model on system-one-bench-tr (bench.sh; BENCH=0 skips it)
+bench() {
+  [ "$code" = 0 ] && [ "${BENCH:-1}" = 1 ] && [ -d "$WORK/model" ] || return 0
+  ./bench.sh "$MODEL@$REVISION" "$WORK/model" 2>&1 | tee -a logs/bench_run.log
+}
+
 # 6. the records next to the model: training/ in the target repo, or (PUSH=0) results/ on this server
 WORK=$(grep -E "^workdir:" "$CONFIG" | awk '{print $2}')
 if [ "${PUSH:-1}" = 0 ]; then
@@ -103,6 +110,7 @@ if [ "${PUSH:-1}" = 0 ]; then
   [ -d "$WORK/model" ] && tar -cf "results/${name}_model.tar" --exclude=__pycache__ -C "$WORK" model   # ~8 GB: the merged model
   ls -lh results/ | tee -a logs/${name}_lora.log
   echo "results: $(pwd)/results (reports: ${name}_reports.tar.gz, model: ${name}_model.tar)"
+  bench
   exit $code
 fi
 uv run --with huggingface_hub python -c "
@@ -115,4 +123,5 @@ for f in files:
     api.upload_file(path_or_fileobj=str(f), path_in_repo=f'training/{f.name}', repo_id='$TARGET', commit_message=f'training record: {f.name}')
 print('records uploaded to https://huggingface.co/$TARGET/tree/main/training:', [f.name for f in files])
 " 2>&1 | tail -1
+bench
 exit $code
