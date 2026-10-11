@@ -33,13 +33,19 @@ kontrolleri yapmak ve sonunda `summarize.py` çıktısını kullanıcıya vermek
 - **Veriye dokunma**: eğitim ve test verisi Hub'dan iner, olduğu gibi kullanılır. Bench verisi (`bench/`) **yalnızca
   değerlendirme** içindir, hiçbir zaman eğitime girmez.
 - **Hiperparametreleri değiştirme**, aşağıdaki sorun giderme adımları dışında.
-- Disk: en az 40 GB boş yer (`df -h .`).
+- **Disk: her şey çalışılan klasörde.** Root diski küçük; repo ayrı çalışma diskinde olmalı (`df -h .` çalışma diskini
+  göstermeli, `/` değil). `env.sh` bütün cache'leri, indirmeleri, derlemeleri ve geçici dosyaları (uv, Python ortamları, Hugging
+  Face, Triton, torch, CUDA JIT, nvcc, `TMPDIR`) repo klasörüne yönlendirir; `run.sh` ve `bench.sh` onu kullanır. Elle bir komut
+  çalıştırırsan (ör. bir Python ortamında test) önce `. ./env.sh` yap. Home dizinine ya da `/tmp`'ye bir şey indirme veya
+  kurma. Çalışma diskinde en az 40 GB boş yer olmalı. Tur sırasında `df -h /` ara ara kontrol et: root diskin doluluğu artmamalı;
+  artıyorsa neyin yazdığını bul (`du -xsh /root/.cache /tmp ~/.* 2>/dev/null`) ve kullanıcıya bildir.
 
 ## Başlatma
 
 ```bash
 cd decider-training
 git pull                                          # yalnızca hiçbir şey çalışmıyorken
+df -h . /                                         # repo çalışma diskinde olmalı, root'ta değil
 nvidia-smi -i 5                                   # boş bellek >= 40 GB olmalı
 export HF_TOKEN=<kullanıcının token'ı> CUDA_VISIBLE_DEVICES=5 MIN_FREE_MIB=40000
 tmux new -d -s train 'PUSH=0 ./run.sh configs/decider_judge4.yaml 2>&1 | tee run.log'
@@ -77,7 +83,9 @@ Eğitim ~37K satır, ~1-1,5 saat; bench iki model için ~1-2 saat.
 - **`out of memory`**: önce `nvidia-smi -i 5` ile vLLM'in belleği artmış mı bak. Eğitimi durdur, `configs/decider_judge4.yaml`
   içinde `micro_tokens: 16384` → `8192` yap, aynı komutla yeniden başlat (checkpoint'ten devam eder). Bunu kullanıcıya bildir.
 - **vLLM'in cevap süreleri çok uzadı (kullanıcı söylerse)**: `touch judge4_run/STOP`; trafik azalınca aynı komutla devam.
-- **Disk doldu**: yalnızca bu repo içinde sil: `.hf-home/hub` (indirilen modeller; yeniden iner). Başka bir şeyi silme.
+- **Disk doldu**: yalnızca bu repo içinde sil: `.hf-home/hub` (indirilen modeller; yeniden iner), `.tmp/`. Başka bir şeyi silme.
+- **Root disk büyüyor**: bir araç `env.sh`'nin yönlendirmediği bir yere yazıyor. Yazanı bul, değişkenini `env.sh`'ye ekle (yalnızca
+  hiçbir şey çalışmıyorken) ve kullanıcıya bildir; root'taki dosyaları kullanıcıya sormadan silme.
 - **Bench HateDay'de ya da bir görevde hata**: `./bench.sh` aynı argümanlarla yeniden çalıştırılabilir; biten görevler atlanır.
   Bench'i tek başına çalıştırmak için:
   `./bench.sh hayriyigit/decider-4b-tr-judge-ttl@8b69f8a8dead233b95cc82e960a507a53a68af2c judge4_run/model`

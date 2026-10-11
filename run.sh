@@ -15,13 +15,8 @@ cd "$(dirname "$0")"
 CONFIG=${1:-configs/decider_judge3.yaml}
 DATA_REPO=${DATA_REPO:-hayriyigit/decider-judge-ttl-mix}
 : "${HF_TOKEN:?export HF_TOKEN=hf_... first}"
-# Everything this script installs or downloads stays inside this folder (uv cache and environments, Hugging Face cache):
-# nothing outside it changes, so other Python environments and inference engines on the machine are left as they are.
-# Delete the folder to remove it all.
-export HF_TOKEN UV_NO_CACHE=0 UV_LINK_MODE=hardlink PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export UV_CACHE_DIR=$PWD/.uv-cache UV_PYTHON_INSTALL_DIR=$PWD/.uv-python HF_HOME=$PWD/.hf-home UV_NO_MODIFY_PATH=1
-export UV_INSTALL_DIR=$PWD/.uv-bin PATH=$PWD/.uv-bin:$PATH:/usr/local/cuda/bin
-mkdir -p logs
+export HF_TOKEN
+. ./env.sh                                                 # every cache, download and build inside this folder
 
 # The GPU: one card, chosen with CUDA_VISIBLE_DEVICES. Training needs ~40-60 GB of its memory; a card an inference engine
 # (vLLM, SGLang, TGI...) has reserved would run both out of memory, so the script stops if the card is not free enough.

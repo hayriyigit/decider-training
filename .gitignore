@@ -11,3 +11,9 @@ results/
 .uv-python/
 .uv-bin/
 .hf-home/
+.uv-tools/
+.cache/
+.local/
+.tmp/
+.triton/
+.nv/

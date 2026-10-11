@@ -25,8 +25,9 @@ PUSH=0 ./run.sh configs/decider_judge4.yaml
 
 **Başka servislerin çalıştığı bir sunucuda:**
 
-- Script her şeyi bu klasörün içine kurar ve indirir: uv, Python ortamları (torch dahil), causal-conv1d derlemesi, Hugging Face
-  cache'i (`.uv-*`, `.hf-home`). Sistem Python'una, CUDA'ya, sürücüye ya da başka ortamlara dokunmaz; klasörü silmek her şeyi kaldırır.
+- Script her şeyi bu klasörün içine kurar, indirir ve derler (`env.sh`): uv, Python ortamları (torch dahil), causal-conv1d derlemesi,
+  Hugging Face, Triton, torch ve CUDA cache'leri, geçici dosyalar (`TMPDIR`). Repoyu çalışma diskine klonlayın; root diske ve home
+  dizinine bir şey yazılmaz. Sistem Python'una, CUDA'ya, sürücüye ya da başka ortamlara dokunmaz; klasörü silmek her şeyi kaldırır.
 - `CUDA_VISIBLE_DEVICES` ile **boş bir GPU** seçilmesi zorunludur. Script, seçilen kartta en az 70 GB boş bellek yoksa başlamaz
   (`MIN_FREE_MIB` ile değiştirilebilir). Bir inference engine'in (vLLM vb.) belleğini ayırdığı karta eğitim koyarsanız ikisi de
   bellek hatası alır.

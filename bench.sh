@@ -12,10 +12,8 @@ set -uo pipefail
 cd "$(dirname "$0")"
 [ $# -ge 1 ] || { echo "usage: ./bench.sh <model>[@revision] ..."; exit 1; }
 : "${HF_TOKEN:?export HF_TOKEN=hf_... first}"
-# as in run.sh: everything inside this folder, torch built for this driver, one free GPU
-export HF_TOKEN UV_NO_CACHE=0 UV_LINK_MODE=hardlink PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export UV_CACHE_DIR=$PWD/.uv-cache UV_PYTHON_INSTALL_DIR=$PWD/.uv-python HF_HOME=$PWD/.hf-home UV_NO_MODIFY_PATH=1
-export UV_INSTALL_DIR=$PWD/.uv-bin PATH=$PWD/.uv-bin:$PATH UV_TORCH_BACKEND=${UV_TORCH_BACKEND:-auto}
+export HF_TOKEN UV_TORCH_BACKEND=${UV_TORCH_BACKEND:-auto}
+. ./env.sh                                                 # as run.sh: every cache inside this folder; one free GPU
 : "${CUDA_VISIBLE_DEVICES:?set CUDA_VISIBLE_DEVICES to one free GPU, e.g. export CUDA_VISIBLE_DEVICES=5}"
 export CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID
 GPU=$(echo "$CUDA_VISIBLE_DEVICES" | cut -d, -f1)
