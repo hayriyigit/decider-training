@@ -20,7 +20,7 @@ ve başlangıç modeli indirilir. Sonuçlar `results/` altında paketlenir:
 - `results/<config>_model.tar` (~8 GB): merge edilmiş, kalibre edilmiş model (`decider_config.json` ve `decider/` kodu dahil).
 
 ```bash
-PUSH=0 ./run.sh configs/decider_judge3.yaml
+PUSH=0 ./run.sh configs/decider_judge4.yaml
 ```
 
 **Başka servislerin çalıştığı bir sunucuda:**
@@ -36,7 +36,7 @@ Uzun sürdüğü için `tmux` ya da `nohup` içinde çalıştırın:
 
 ```bash
 export CUDA_VISIBLE_DEVICES=3     # boş bir GPU: nvidia-smi
-tmux new -s train 'PUSH=0 ./run.sh configs/decider_judge3.yaml 2>&1 | tee run.log'
+tmux new -s train 'PUSH=0 ./run.sh configs/decider_judge4.yaml 2>&1 | tee run.log'
 ```
 
 Gereken tek şey NVIDIA GPU, CUDA toolkit (`nvcc`, causal-conv1d derlemesi için) ve internet. `uv` yoksa script kurar; Python
@@ -62,7 +62,9 @@ dakikada bir). Eğitimi temiz durdurmak için `touch <workdir>/STOP`.
 - `run.sh`: yukarıdaki adımlar
 - `scripts/decider_lora.py`: LoRA eğitimi, export, değerlendirme, push
 - `scripts/decider_eval.py`: bir decider modelini laya formatındaki bir test parquet'inde ölçer
-- `configs/decider_judge3.yaml`: beşinci tur. `hayriyigit/decider-4b-tr-judge-ttl` üzerine, TTL tanım değişikliği (fiyat ve
+- `configs/decider_judge4.yaml`: beşinci tur, judge3 + RAGBench-tr (finans, teknik kılavuz, tıp, ürün desteği belgeleri).
+  judge3'ün yerine bunu çalıştırın; hedef aynı: `hayriyigit/decider-4b-tr-judge-ttl2`
+- `configs/decider_judge3.yaml`: beşinci tur (RAGBench'siz). `hayriyigit/decider-4b-tr-judge-ttl` üzerine, TTL tanım değişikliği (fiyat ve
   piyasa haberleri daily); hedef `hayriyigit/decider-4b-tr-judge-ttl2`
 
 ## Süre ve bellek
@@ -80,12 +82,12 @@ başka bir makinede `s1bench score` ile yapılır.
 
 ```bash
 export HF_TOKEN=hf_... CUDA_VISIBLE_DEVICES=5 MIN_FREE_MIB=20000
-tmux new -s bench './bench.sh hayriyigit/decider-4b-tr-judge-ttl@8b69f8a8dead233b95cc82e960a507a53a68af2c judge3_run/model 2>&1 | tee bench.log'
+tmux new -s bench './bench.sh hayriyigit/decider-4b-tr-judge-ttl@8b69f8a8dead233b95cc82e960a507a53a68af2c judge4_run/model 2>&1 | tee bench.log'
 ```
 
 - Bench'in görev dosyaları `hayriyigit/s1bench-tr-data`'dan (private) iner; sunucunun bench'in kaynaklarına (GitHub, Zenodo,
   Kaggle) erişmesi gerekmez.
-- Model bir Hub repo'su (`repo@revision`) ya da yerel bir klasör olabilir (ör. `run.sh`'nin çıktısı `judge3_run/model`).
+- Model bir Hub repo'su (`repo@revision`) ya da yerel bir klasör olabilir (ör. `run.sh`'nin çıktısı `judge4_run/model`).
 - `MAIN=1`: yalnızca bench'in 26 ana görevi (daha hızlı).
 - Çıktı: `results/s1bench_predictions.tar.gz`. Bunu getirin, puanlama ve diğer modellerle karşılaştırma oradan yapılır.
 - Eğitimle aynı anda çalıştırmayın; `run.sh` ya da `bench.sh` çalışırken `git pull` yapmayın.

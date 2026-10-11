@@ -1,0 +1,52 @@
+# Fifth LoRA round: decider_judge3 (the TTL definition change: price / market news = daily) plus RAGBench-tr, retrieved
+# documents from finance, manuals, medicine and product support, on top of hayriyigit/decider-4b-tr-judge-ttl. TTL pages
+# relabeled with the new teacher prompt, boundary pages for both sides; the other judge rows sampled so the judge does not drift.
+#   ./run.sh configs/decider_judge4.yaml
+workdir: ./judge4_run
+
+model:
+  repo: hayriyigit/decider-4b-tr-judge-ttl
+  revision: 8b69f8a8dead233b95cc82e960a507a53a68af2c
+
+data:
+  train: data/judge_mix4/train-00000-of-00001.parquet   # run.sh downloads it from hayriyigit/decider-judge-ttl-mix
+  test: data/judge_mix4/test-00000-of-00001.parquet
+  rows:
+    ttl_tr: 20000                               # all: relabeled pages and the boundary pages
+    ragbench_tr: 20000                          # all: one row per (question, document), 9 domains
+    nomiracl_tr: 4000                           # the judge, sampled
+    boolq_tr: 1000
+    synth2_tr: 1500
+    hotpot_tr: 2000
+    wiki2_tr: 1000
+    synth_tr: 2000
+    template_tr: 1000
+    offtopic_tr: 500
+    squad_tr: 1500
+    musique_tr: 500
+    replay_bev_tr: 3000
+    replay_bev_tr_en: 2000
+  holdout_rows: 1500
+  max_state_tokens: 4096
+  seed: 0
+
+lora:
+  r: 64
+  alpha: 128
+
+train:
+  epochs: 1
+  lr: 1.0e-4
+  warmup: 0.05
+  tokens_per_step: 65536
+  micro_tokens: 16384                           # ~25 GB peak: fits next to other services on a shared card; 32768 on a free H200
+
+checkpoint:
+  every_minutes: 30
+
+limits:
+  max_hours: 4
+  reserve_minutes: 20
+
+export:
+  push_to_hub: {repo: hayriyigit/decider-4b-tr-judge-ttl2, private: true}
