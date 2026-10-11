@@ -56,7 +56,7 @@ yerden devam eder. Eğitimi temiz durdurmak: `touch judge4_run/STOP` (checkpoint
 | Ortam | `logs/run_gpu.log` | `torch 2.14.1+cu126 CUDA 12.6 GPU True` (iki satır) | `GPU False`, `0 active drivers` |
 | causal-conv1d | `logs/causal_conv1d.log` | `causal_conv1d 1.7.0 ...` | `not built ...` kabul edilebilir (eğitim yavaşlar), hata değil |
 | Başlangıç ölçümü | `logs/decider_judge4_eval_start.log` | `on 23,056 rows`; ilerleme satırlarında `accuracy so far` ~0,85-0,90 | < 0,75: model ya da ortam yanlış |
-| Eğitim verisi | `logs/decider_judge4_lora.log` | kaynak başına satırlar (ör. `ragbench_tr: 13,337`, `ttl_tr: ~3,700`), `items train: ~37,000 rows` | bir kaynak 0 satır |
+| Eğitim verisi | `logs/decider_judge4_lora.log` | kaynak başına satırlar (ör. `ragbench_tr: ~13,300`, `ttl_tr: ~3,700`), `items train: ~37,000 rows` | bir kaynak 0 satır |
 | Eğitim | aynı log, 20 adımda bir `train epoch=1 step=...` | `ce` ilk ~60 adımda 0,2'nin altına iner ve 0,03-0,30 arasında kalır; `acc` 0,90-0,99; replay adımlarında `kl` 0,2-0,4 (`kl=0.0000` o aralıkta replay olmadığı anlamına gelir, normal) | `ce` sürekli > 0,5 ya da `nan`; `out of memory` |
 | Checkpoint | aynı log | 30 dakikada bir `checkpoint: step N` | |
 | Export | aynı log | `validation ... val_slot_accuracy` ~0,93-0,98; `temperatures ... {'choice': ..., 'noul': ...}`; `exported` | |
